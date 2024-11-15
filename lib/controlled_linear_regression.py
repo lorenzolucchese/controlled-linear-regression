@@ -36,7 +36,7 @@ class LinearPredictionModel(LinearModel):
             return super().predict(X)
 
 
-def _fit_controlled_linear_regression_numpy(X: Union[np.ndarray, None], Y: np.ndarray, Z: Union[np.ndarray, None], fit_intercept: bool = True, method: str = 'joint-OLS') -> LinearPredictionModel:    
+def _fit_controlled_linear_regression_numpy(X: Union[np.ndarray, None], Y: np.ndarray, Z: Union[np.ndarray, None], fit_intercept: bool = True, method: str = 'control-joint-OLS') -> LinearPredictionModel:    
     # Note this has same logic as sklearn.linear_regression, i.e. fits multi-target to same features
     if Z is not None and Z.ndim == 1:
         Z = Z.reshape((-1, 1))
@@ -51,14 +51,14 @@ def _fit_controlled_linear_regression_numpy(X: Union[np.ndarray, None], Y: np.nd
         # add feature dimension
         if Z.ndim == 1:
             Z.reshape((-1, 1))
-        if method == 'control':
+        if method == 'control-basic':
             Y_c = Y - Z @ np.linalg.inv(Z.T @ Z) @ Z.T @ Y
 
     lm_fit = LinearRegression(fit_intercept=fit_intercept)
     if X is not None and Z is not None:
-        if method == 'control':
+        if method == 'control-basic':
             lm_fit.fit(X, Y_c)
-        elif method == 'joint-OLS':            
+        elif method == 'control-joint-OLS':            
             XZ = np.concatenate([X, Z], axis=-1)
             lm_fit.fit(XZ, Y)
         else:
@@ -66,9 +66,9 @@ def _fit_controlled_linear_regression_numpy(X: Union[np.ndarray, None], Y: np.nd
         coef_X = lm_fit.coef_[:, :X.shape[1]] if Y.ndim == 2 else lm_fit.coef_[:X.shape[1]]
         intercept = lm_fit.intercept_
     elif X is None and Z is not None:
-        if method == 'control':
+        if method == 'control-basic':
             intercept = Y_c.mean(axis=0) if Y_c.ndim == 2 else Y_c.mean()
-        elif method == 'joint-OLS':
+        elif method == 'control-joint-OLS':
             lm_fit.fit(Z, Y)            
             intercept = lm_fit.intercept_
         else:
@@ -217,7 +217,7 @@ class TorchLinearPredictionModel(LinearModel):
                 return self.intercept_ + X @ self.coef_.T if self.coef_.ndim == 2 else self.intercept_ + X @ self.coef_
         
 
-def _fit_controlled_linear_regression_torch(X: Union[torch.Tensor, None], Y: torch.Tensor, Z: Union[torch.Tensor, None], fit_intercept: bool = True, parallel: bool = False, method: str = 'joint-OLS') -> TorchLinearPredictionModel:    
+def _fit_controlled_linear_regression_torch(X: Union[torch.Tensor, None], Y: torch.Tensor, Z: Union[torch.Tensor, None], fit_intercept: bool = True, parallel: bool = False, method: str = 'control-joint-OLS') -> TorchLinearPredictionModel:    
     if X is not None:
         if parallel:
             assert Y.ndim == 2
@@ -236,20 +236,20 @@ def _fit_controlled_linear_regression_torch(X: Union[torch.Tensor, None], Y: tor
             # add feature dimension
             if Z.ndim == 2:
                 Z = Z[:, None, :]
-            if method == 'control':
+            if method == 'control-basic':
                 Y_c = Y - torch.einsum('nik,kij,jk->nk', Z, torch.inverse(torch.einsum('nik,njk->kij', Z, Z)), torch.einsum('njk,nk->jk', Z, Y))
         else:
             # add feature dimension
             if Z.ndim == 1:
                 Z = Z[:, None]
-            if method == 'control':
+            if method == 'control-basic':
                 Y_c = Y - Z @ torch.inverse(Z.T @ Z) @ Z.T @ Y
 
     lm_fit = TorchLinearRegression(fit_intercept=fit_intercept, parallel=parallel)
     if X is not None and Z is not None:
-        if method == 'control':
+        if method == 'control-basic':
             lm_fit.fit(X, Y_c)
-        elif method == 'joint-OLS':
+        elif method == 'control-joint-OLS':
             XZ = torch.cat([X, Z], dim=1)
             lm_fit.fit(XZ, Y)
         else:
@@ -257,9 +257,9 @@ def _fit_controlled_linear_regression_torch(X: Union[torch.Tensor, None], Y: tor
         coef_X = lm_fit.coef_[:, :X.shape[1]] if Y.ndim == 2 else lm_fit.coef_[:X.shape[1]]
         intercept = lm_fit.intercept_
     elif X is None and Z is not None:
-        if method == 'control':
+        if method == 'control-basic':
             intercept = torch.mean(Y_c, dim=0) if Y_c.ndim == 2 else torch.mean(Y_c)
-        elif method == 'joint-OLS':
+        elif method == 'control-joint-OLS':
             lm_fit.fit(Z, Y)            
             intercept = lm_fit.intercept_
         else:
@@ -280,7 +280,7 @@ def _fit_controlled_linear_regression_torch(X: Union[torch.Tensor, None], Y: tor
     return lm_pred
 
 
-def fit_controlled_linear_regression(X: Union[np.ndarray, torch.Tensor, None], Y: Union[np.ndarray, torch.Tensor], Z: Union[np.ndarray, torch.Tensor, None], fit_intercept: bool = True, parallel: bool = False, method: str = 'joint-OLS') -> Union[LinearPredictionModel, TorchLinearPredictionModel]:    
+def fit_controlled_linear_regression(X: Union[np.ndarray, torch.Tensor, None], Y: Union[np.ndarray, torch.Tensor], Z: Union[np.ndarray, torch.Tensor, None], fit_intercept: bool = True, parallel: bool = False, method: str = 'control-joint-OLS') -> Union[LinearPredictionModel, TorchLinearPredictionModel]:    
     if all([isinstance(M, np.ndarray) or M is None for M in [X, Y, Z]]):
         if parallel:
             raise ValueError('parallel not supported for numpy arrays, current implementation uses scikit-learn which uses all rgressor across all targets.')
