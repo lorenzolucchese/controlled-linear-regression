@@ -175,6 +175,6 @@ Given $\mathbf{X}$ and $\mathbf{Z}$, augmenting the first feasible controlled es
 The code in this github repo provides an implementation and comparsion of the three estimators:
 - classic OLS estimator $`\boldsymbol{\hat\beta}_{\mathbf{X}}`$;
 - first feasible control estimator $`\boldsymbol{\hat\beta}_{\mathbf{X}, \mathbf{Z}, \hat{\Sigma}}`$;
-- second feasible control (joint OLS) estimator $`\boldsymbol{\hat\beta}_{\mathbf{X}, \mathbf{Z}, \hat{\Sigma}'}`$;
+- second feasible control (joint OLS) estimator $`\boldsymbol{\hat\beta}_{\mathbf{X}, \mathbf{Z}}`$;
 
 under a variety of assumptions on the data generating process (including the case where $\boldsymbol{\epsilon}$ does not depend linearly on $\mathbf{Z}$).
